@@ -1,23 +1,45 @@
 security:
-    # https://symfony.com/doc/current/security.html#where-do-users-come-from-user-providers
-    providers:
-        users_in_memory: { memory: null }
-    firewalls:
-        dev:
-            pattern: ^/(_(profiler|wdt)|css|images|js)/
-            security: false
-        main:
-            anonymous: lazy
-            provider: users_in_memory
+  encoders:
+    App\Entity\User:
+      algorithm: bcrypt
 
-            # activate different ways to authenticate
-            # https://symfony.com/doc/current/security.html#firewalls-authentication
+  # https://symfony.com/doc/current/security.html#where-do-users-come-from-user-providers
+  providers:
+    # used to reload user from session & other features (e.g. switch_user)
+    app_user_provider:
+      entity:
+        class: App\Entity\User
+        property: username
+  firewalls:
 
-            # https://symfony.com/doc/current/security/impersonating_user.html
-            # switch_user: true
+    login:
+      pattern:  ^/api/login
+      stateless: true
+      anonymous: true
+      json_login:
+        check_path: /api/login_check
+        success_handler:          lexik_jwt_authentication.handler.authentication_success
+        failure_handler:          lexik_jwt_authentication.handler.authentication_failure
 
-    # Easy way to control access for large sections of your site
-    # Note: Only the *first* access control that matches will be used
-    access_control:
-        # - { path: ^/admin, roles: ROLE_ADMIN }
-        # - { path: ^/profile, roles: ROLE_USER }
+    api:
+      pattern:   ^/api
+      stateless: true
+      anonymous: true
+      guard:
+        authenticators:
+          - lexik_jwt_authentication.jwt_token_authenticator
+
+  access_control:
+    # Anonyme peut se Login (POST sur /login_check) [OK]
+    - { path: ^/api/login, roles: IS_AUTHENTICATED_ANONYMOUSLY }
+    # Anonyme peut s'inscrire (POST sur /User) [OK]
+    - { path: ^/api/user, roles: IS_AUTHENTICATED_ANONYMOUSLY, method:["POST"] }
+    # Anonyme peut voir la liste des Artistes [OK]
+    - { path: ^/api/artiste, roles: IS_AUTHENTICATED_ANONYMOUSLY, method:["GET"] }
+    # Anonyme peut voir la liste des Concerts [OK]
+    - { path: ^/api/concert, roles: IS_AUTHENTICATED_ANONYMOUSLY, method:["GET"] }
+    - { path: ^/api/concert, roles: ROLE_ADMIN, method:["POST", "PUT", "DELETE"] }
+    # ADMIN peut voir, ajouter, modifier, supprimer la liste des Artiste
+    - { path: ^/api/artiste, roles: ROLE_ADMIN, method:["POST", "PUT", "DELETE"] }
+    - { path: ^/api/login, roles: ROLE_ADMIN, method:["POST"] }
+    - { path: ^/api,       roles: IS_AUTHENTICATED_FULLY }
